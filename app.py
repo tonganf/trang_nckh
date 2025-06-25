@@ -19,13 +19,14 @@ model = None
 feature_columns = [
     'TBLANG', 'TBMATH', 'TBCT', 'TMKNM', 'TBLT',
     'M17', 'M19', 'M22', 'M30', 'M32', 'M33',
-    'M36', 'M41', 'M44', 'M45', 'M47'
+    'M34', 'M35', 'M36', 'M38', 'M41', 'M43',
+    'M44', 'M45', 'M47'
 ]
 
 def load_model():
     """Load the machine learning model"""
     global model
-    model_path = 'model.pkl'
+    model_path = 'rf_model.pkl'
     
     try:
         if os.path.exists(model_path):
@@ -47,7 +48,7 @@ def create_dummy_model():
     # Generate dummy data
     np.random.seed(42)
     n_samples = 1000
-    X = np.random.uniform(0, 10, (n_samples, len(feature_columns)))
+    X = np.random.uniform(0, 10, (n_samples, len(feature_columns)))  # Sử dụng 20 features
     
     # Create dummy target based on average score (0: Cảnh báo, 1: An toàn)
     avg_scores = X.mean(axis=1)
@@ -154,7 +155,8 @@ def predict():
         # Make prediction
         features_array = np.array([features])
         prediction_raw = model.predict(features_array)[0]
-        
+        logger.info(f"Input features: {features}")
+        logger.info(f"Prediction (raw): {prediction_raw}")
         # Convert prediction to meaningful labels
         if prediction_raw == 0:
             prediction_label = "⚠️ Cảnh báo"

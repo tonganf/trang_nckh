@@ -2,7 +2,8 @@
 const REQUIRED_FIELDS = [
     'TBLANG', 'TBMATH', 'TBCT', 'TMKNM', 'TBLT',
     'M17', 'M19', 'M22', 'M30', 'M32', 'M33',
-    'M36', 'M41', 'M44', 'M45', 'M47'
+    'M34', 'M35', 'M36', 'M38', 'M41', 'M43',
+    'M44', 'M45', 'M47'
 ];
 
 // DOM Elements
@@ -63,7 +64,9 @@ function collectFormData() {
     REQUIRED_FIELDS.forEach(field => {
         const input = document.getElementById(field);
         if (input) {
-            data[field] = parseFloat(input.value) || 0;
+            // Chuyển đổi dấu phẩy thành dấu chấm trước khi parse float
+            const value = input.value.replace(',', '.');
+            data[field] = parseFloat(value) || 0;
         }
     });
     return data;
@@ -104,21 +107,26 @@ function validateForm() {
 
 // Validate single input
 function validateSingleInput(input) {
-    // Cho phép trường hợp đang nhập (kết thúc bằng dấu chấm)
-    if (input.value === '' || input.value === '0.') {
+    const value = input.value;
+    
+    // Cho phép trường hợp rỗng hoặc đang nhập dấu thập phân
+    if (value === '' || value === '0.' || /^\d{1,2}\.$/.test(value)) {
         input.classList.remove('invalid');
         return true;
     }
     
-    // Kiểm tra giá trị số
-    const value = parseFloat(input.value);
-    if (isNaN(value)) {
+    // Chuyển dấu phẩy thành dấu chấm để kiểm tra
+    const valueToCheck = value.replace(',', '.');
+    
+    // Kiểm tra định dạng số thập phân hợp lệ
+    if (!/^\d{1,2}(\.\d{0,2})?$/.test(valueToCheck)) {
         input.classList.add('invalid');
         return false;
     }
     
-    // Kiểm tra phạm vi 0-10
-    if (value < 0 || value > 10) {
+    // Kiểm tra giá trị số
+    const numValue = parseFloat(valueToCheck);
+    if (isNaN(numValue) || numValue < 0 || numValue > 10) {
         input.classList.add('invalid');
         return false;
     }
@@ -129,44 +137,45 @@ function validateSingleInput(input) {
 
 // Restrict input to only allow numbers between 0-10, cho phép số lẻ/thập phân
 function restrictInput(input) {
+    let previousValue = '';
+
     input.addEventListener('input', function(e) {
         let value = e.target.value;
         
-        // Chỉ cho phép số, dấu chấm và dấu phẩy
-        value = value.replace(/[^\d.,]/g, '');
-        
+        // Nếu giá trị rỗng, cho phép
+        if (value === '') {
+            previousValue = value;
+            return;
+        }
+
         // Chuyển dấu phẩy thành dấu chấm
         value = value.replace(/,/g, '.');
+
+        // Kiểm tra nếu giá trị chỉ là "0." hoặc số hợp lệ với dấu thập phân
+        const isValidDecimal = /^(\d{1,2}\.?\d{0,2}|\d{0,2}\.?\d{0,2})$/.test(value);
         
-        // Xử lý nhiều dấu chấm
-        const parts = value.split('.');
-        if (parts.length > 2) {
-            value = parts[0] + '.' + parts.slice(1).join('');
-        }
-        
-        // Nếu chỉ có dấu chấm/phẩy, thêm số 0 vào trước
-        if (value === '.') {
-            value = '0.';
-        }
-        
-        // Nếu số lớn hơn 10, giới hạn lại
-        if (!value.endsWith('.')) {
-            const numValue = parseFloat(value);
-            if (!isNaN(numValue) && numValue > 10) {
-                value = '10';
+        if (isValidDecimal) {
+            // Nếu là số hợp lệ, kiểm tra giá trị
+            if (value.endsWith('.')) {
+                // Cho phép nếu đang nhập dấu thập phân
+                previousValue = value;
+                e.target.value = value;
+            } else {
+                const numValue = parseFloat(value);
+                if (!isNaN(numValue) && numValue <= 10) {
+                    previousValue = value;
+                    e.target.value = value;
+                } else {
+                    // Nếu giá trị > 10, quay lại giá trị trước
+                    e.target.value = previousValue;
+                }
             }
+        } else {
+            // Nếu không hợp lệ, quay lại giá trị trước
+            e.target.value = previousValue;
         }
         
-        // Giới hạn số thập phân
-        if (value.includes('.')) {
-            const decimalPart = value.split('.')[1];
-            if (decimalPart && decimalPart.length > 2) {
-                const integerPart = value.split('.')[0];
-                value = integerPart + '.' + decimalPart.substring(0, 2);
-            }
-        }
-        
-        e.target.value = value;
+        validateSingleInput(e.target);
     });
 
     // Xử lý sự kiện keydown
@@ -189,8 +198,9 @@ function restrictInput(input) {
         
         // Cho phép nhập dấu chấm và dấu phẩy
         if (e.key === '.' || e.key === ',') {
+            const currentValue = e.target.value;
             // Chỉ cho phép một dấu thập phân
-            if (!input.value.includes('.') && !input.value.includes(',')) {
+            if (!currentValue.includes('.') && !currentValue.includes(',')) {
                 return;
             }
         }
